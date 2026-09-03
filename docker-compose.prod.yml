@@ -1,0 +1,40 @@
+# Production overlay — merge over the base file:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Every value below is REQUIRED from the environment (${VAR:?...}); compose refuses
+# to start when one is missing, so prod can never boot on a committed default (H5).
+# The app UI/API is intended to sit behind VPN/reverse-proxy — only the Slack and
+# webhook paths need to be publicly reachable.
+services:
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+
+  redis:
+    # Require a password in prod.
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?set REDIS_PASSWORD}"]
+
+  backend:
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD}
+      ORBIT_JWT_PRIVATE_KEY: ${ORBIT_JWT_PRIVATE_KEY:?set ORBIT_JWT_PRIVATE_KEY}
+      ORBIT_JWT_PUBLIC_KEY: ${ORBIT_JWT_PUBLIC_KEY:?set ORBIT_JWT_PUBLIC_KEY}
+      SLACK_TOKEN_ENC_KEY: ${SLACK_TOKEN_ENC_KEY:?set SLACK_TOKEN_ENC_KEY}
+      ORBIT_JIRA_WEBHOOK_SECRET: ${ORBIT_JIRA_WEBHOOK_SECRET:?set ORBIT_JIRA_WEBHOOK_SECRET}
+      SNAPSHOT_SHARED_SECRET: ${SNAPSHOT_SHARED_SECRET:?set SNAPSHOT_SHARED_SECRET}
+      ORBIT_COOKIE_SECURE: "true"
+      # Google SSO (blank = disabled; login page bounces with google_not_configured)
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
+      GOOGLE_ALLOWED_DOMAINS: ${GOOGLE_ALLOWED_DOMAINS:-}
+      INTERNAL_EMAIL_DOMAINS: ${INTERNAL_EMAIL_DOMAINS:-}
+      ORBIT_ADMIN_PASSWORD: ${ORBIT_ADMIN_PASSWORD:-}
+      FRONTEND_URL: ${FRONTEND_URL:?set FRONTEND_URL}
+
+  snapshot-sidecar:
+    environment:
+      SNAPSHOT_SHARED_SECRET: ${SNAPSHOT_SHARED_SECRET:?set SNAPSHOT_SHARED_SECRET}
+      ALLOWED_TARGET_ORIGINS: ${FRONTEND_URL:?set FRONTEND_URL}

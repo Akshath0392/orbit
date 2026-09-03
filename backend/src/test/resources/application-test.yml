@@ -1,0 +1,32 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/orbit}
+    username: ${SPRING_DATASOURCE_USERNAME:orbit}
+    password: ${SPRING_DATASOURCE_PASSWORD:orbit_secret}
+  flyway:
+    enabled: true
+    out-of-order: true
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+
+orbit:
+  admin:
+    # Deterministic bootstrap admin password for integration tests only.
+    seed-password: gauge123
+  jwt:
+    access-token-expiry-ms: 3600000
+  ai:
+    provider: stub
+    model: stub
+  agents:
+    standup:
+      cron: "-"
+    escalation:
+      require-hitl: true
+  jira:
+    # Standing crons stay dark in tests — a tick firing mid-suite would hit
+    # the real datasource and race the test fixtures.
+    delta-sync-cron: "-"
+    sprint-sync-cron: "-"

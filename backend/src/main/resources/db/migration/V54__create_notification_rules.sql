@@ -1,0 +1,41 @@
+CREATE TABLE notification_rules (
+  id                     BIGSERIAL    PRIMARY KEY,
+  rule_name              VARCHAR(150) NOT NULL,
+  trigger_type           VARCHAR(20)  NOT NULL,
+  role                   VARCHAR(50),
+  phase                  VARCHAR(20),
+  offset_days            INT          DEFAULT 0,
+  trigger_time           VARCHAR(5)   DEFAULT '09:00',
+  enabled                BOOLEAN      DEFAULT true,
+  overdue_interval_hours INT          DEFAULT 3,
+  overdue_window_start   VARCHAR(5)   DEFAULT '09:00',
+  overdue_window_end     VARCHAR(5)   DEFAULT '21:00',
+  template_id            VARCHAR(50),
+  created_at             TIMESTAMP    DEFAULT NOW()
+);
+
+INSERT INTO notification_rules
+  (rule_name, trigger_type, role, phase, offset_days, trigger_time) VALUES
+  ('Developer – Dev End Date – T-2 Reminder',       'PRE_DUE', 'DEVELOPER',        'DEV',  2, '09:00'),
+  ('Developer – Dev End Date – T-1 Reminder',       'PRE_DUE', 'DEVELOPER',        'DEV',  1, '09:00'),
+  ('Developer – Dev End Date – D-Day 09:00',        'DDAY',    'DEVELOPER',        'DEV',  0, '09:00'),
+  ('Developer – Dev End Date – D-Day 17:00',        'DDAY',    'DEVELOPER',        'DEV',  0, '17:00'),
+  ('Technical Lead – Dev End Date – T-2',           'PRE_DUE', 'TECH_LEAD',        'DEV',  2, '09:00'),
+  ('Technical Lead – Dev End Date – T-1',           'PRE_DUE', 'TECH_LEAD',        'DEV',  1, '09:00'),
+  ('Technical Lead – Dev End Date – D-Day 09:00',   'DDAY',    'TECH_LEAD',        'DEV',  0, '09:00'),
+  ('Technical Lead – Prod Release – T-2',           'PRE_DUE', 'TECH_LEAD',        'PROD', 2, '09:00'),
+  ('Technical Lead – Prod Release – T-1',           'PRE_DUE', 'TECH_LEAD',        'PROD', 1, '09:00'),
+  ('Technical Lead – Prod Release – D-Day 09:00',   'DDAY',    'TECH_LEAD',        'PROD', 0, '09:00'),
+  ('QA Lead – QA End Date – T-2',                   'PRE_DUE', 'QA_LEAD',          'QA',   2, '09:00'),
+  ('QA Lead – QA End Date – T-1',                   'PRE_DUE', 'QA_LEAD',          'QA',   1, '09:00'),
+  ('QA Lead – QA End Date – D-Day 09:00',           'DDAY',    'QA_LEAD',          'QA',   0, '09:00'),
+  ('Project Manager – UAT Sign-off – T-2',          'PRE_DUE', 'PROJECT_MANAGER',  'UAT',  2, '09:00'),
+  ('Project Manager – UAT Sign-off – T-1',          'PRE_DUE', 'PROJECT_MANAGER',  'UAT',  1, '09:00'),
+  ('Project Manager – UAT Sign-off – D-Day 09:00',  'DDAY',    'PROJECT_MANAGER',  'UAT',  0, '09:00'),
+  ('Solution Manager – FSD Closure – T-2',          'PRE_DUE', 'SOLUTION_MANAGER', 'FSD',  2, '09:00'),
+  ('Solution Manager – FSD Closure – T-1',          'PRE_DUE', 'SOLUTION_MANAGER', 'FSD',  1, '09:00'),
+  ('Solution Manager – FSD Closure – D-Day 09:00',  'DDAY',    'SOLUTION_MANAGER', 'FSD',  0, '09:00'),
+  ('Daily Digest – Tech Lead',                      'DIGEST',  'TECH_LEAD',        NULL,   0, '08:00'),
+  ('Daily Digest – Engineering Manager',            'DIGEST',  'ENG_MANAGER',      NULL,   0, '08:00'),
+  ('Daily Digest – Delivery SPOC',                  'DIGEST',  'DELIVERY_SPOC',    NULL,   0, '08:00'),
+  ('Daily Digest – Solutions SPOC',                 'DIGEST',  'SOLUTIONS_SPOC',   NULL,   0, '08:00');

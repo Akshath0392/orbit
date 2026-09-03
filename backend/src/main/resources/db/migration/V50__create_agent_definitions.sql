@@ -1,0 +1,42 @@
+CREATE TABLE agent_definitions (
+  id               BIGSERIAL PRIMARY KEY,
+  name             VARCHAR(100) NOT NULL,
+  description      TEXT,
+  agent_type       VARCHAR(30) NOT NULL,
+  trigger_type     VARCHAR(30) NOT NULL,
+  trigger_config   JSONB,
+  prompt_template  TEXT,
+  tools            TEXT,
+  output_channel   VARCHAR(30),
+  channel_config   JSONB,
+  requires_hitl    BOOLEAN DEFAULT true,
+  enabled          BOOLEAN DEFAULT false,
+  project_id       BIGINT REFERENCES projects(id),
+  system_agent     BOOLEAN DEFAULT false,
+  created_by       VARCHAR(100),
+  created_at       TIMESTAMP DEFAULT NOW(),
+  updated_at       TIMESTAMP DEFAULT NOW()
+);
+
+INSERT INTO agent_definitions (name, description, agent_type, trigger_type, trigger_config, tools, output_channel, requires_hitl, enabled, system_agent, created_by)
+VALUES
+  ('DeliveryIntelligenceAgent', 'Analyses Jira events and generates risk alerts', 'INTELLIGENCE', 'WEBHOOK',
+   '{"events":["issue_updated","issue_created"]}',
+   'orbit.get_cr_summary,orbit.create_alert,memory.read,memory.write',
+   'IN_APP', true, true, true, 'system'),
+  ('StandupAgent', 'Generates daily standup draft and posts to Slack', 'COMMUNICATION', 'CRON',
+   '{"cron":"0 0 8 * * MON-FRI"}',
+   'orbit.get_cr_summary,slack.send_channel',
+   'SLACK', true, true, true, 'system'),
+  ('EscalationAgent', 'Escalates hold-aging and SLA-breach alerts to stakeholders', 'ESCALATION', 'THRESHOLD',
+   '{"metric":"hold_days","gt":5}',
+   'slack.send_channel,email.send',
+   'SLACK', true, true, true, 'system'),
+  ('ManDayForecastAgent', 'Forecasts man-day burn and raises budget alerts', 'INTELLIGENCE', 'CRON',
+   '{"cron":"0 0 7 * * *"}',
+   'orbit.get_cr_summary,orbit.create_alert,memory.write',
+   'IN_APP', false, true, true, 'system'),
+  ('ReportDraftingAgent', 'Drafts delivery reports on demand or schedule', 'REPORTING', 'MANUAL',
+   '{}',
+   'orbit.get_cr_summary,memory.read',
+   'IN_APP', false, true, true, 'system');

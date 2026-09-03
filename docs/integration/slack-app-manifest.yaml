@@ -1,0 +1,51 @@
+# Orbit Slack App — manifest
+# Apply at https://api.slack.com/apps → Create New App → From an app manifest.
+# Single-workspace install. Update request URLs to your tunnel host before submitting.
+#
+# After creating the app:
+#   1. Copy Signing Secret (Basic Information) and Bot Token (OAuth & Permissions).
+#   2. Paste both into Orbit Admin → Integrations → Slack (stored encrypted in slack_config).
+#   3. Set Default Channel and Workspace Name in the same admin form.
+# Do NOT put bot token / signing secret in application.yml or env vars — single source of truth is the DB.
+display_information:
+  name: Orbit
+  description: Delivery intelligence — query status, run agents, approve HITL actions.
+  background_color: "#0F1629"
+features:
+  bot_user:
+    display_name: Orbit
+    always_online: true
+  slash_commands:
+    - command: /orbit
+      url: https://REPLACE_ME/api/v1/slack/commands
+      description: Query Orbit or run an agent (HITL-gated)
+      usage_hint: "alerts [critical|warning|info] | bugs [p0-p3] | crs | briefing | forecast <project> | capacity | report | run <report|forecast <project>|briefing>"
+      should_escape: false
+    - command: /orbit-link
+      url: https://REPLACE_ME/api/v1/slack/commands
+      description: Link your Slack user to your Orbit account
+      usage_hint: "your.name@example.com"
+      should_escape: false
+oauth_config:
+  scopes:
+    bot:
+      - app_mentions:read
+      - chat:write
+      - commands
+      - users:read
+      - users:read.email
+      - im:history
+      - im:read
+      - im:write
+settings:
+  event_subscriptions:
+    request_url: https://REPLACE_ME/api/v1/slack/events
+    bot_events:
+      - app_mention
+      - message.im
+  interactivity:
+    is_enabled: true
+    request_url: https://REPLACE_ME/api/v1/slack/interactions
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false

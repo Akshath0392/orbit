@@ -1,0 +1,167 @@
+spring:
+  application:
+    name: orbit
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/gauge}
+    username: ${SPRING_DATASOURCE_USERNAME:gauge}
+    password: ${SPRING_DATASOURCE_PASSWORD:gauge_secret}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 15
+    locations: classpath:db/migration
+    validate-on-migrate: false
+    out-of-order: true
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      connect-timeout: 1000ms
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+
+server:
+  port: 8080
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+orbit:
+  # Comma-separated email domains treated as internal/company addresses
+  # (e.g. "example.com,example.org"). Blank = no restriction: any domain
+  # may link via Slack and help text shows a neutral example address.
+  internal-email-domains: ${INTERNAL_EMAIL_DOMAINS:}
+
+  admin:
+    # Bootstrap admin account (seeded only when the users table is empty).
+    seed-email: ${ORBIT_ADMIN_EMAIL:admin@orbit.io}
+    # Leave blank to auto-generate a random password logged once at first boot.
+    # Set ORBIT_ADMIN_PASSWORD to pin a known initial password (then rotate it).
+    seed-password: ${ORBIT_ADMIN_PASSWORD:}
+
+  jwt:
+    # Tokens are signed with RS256 using the ORBIT_JWT_PRIVATE_KEY / ORBIT_JWT_PUBLIC_KEY
+    # env vars (see JwtService). There is intentionally no shared HMAC secret here.
+    # Default 8h so a login survives a full working day; override per deploy.
+    access-token-expiry-ms: ${ORBIT_JWT_ACCESS_EXPIRY_MS:28800000}
+    refresh-token-expiry-ms: 604800000    # 7 days
+
+  ai:
+    provider: ${AI_PROVIDER:anthropic}
+    model: claude-sonnet-4-6
+    max-tokens: 4096
+    cost-per-1k-tokens: 0.003
+
+  redis:
+    dashboard-ttl-seconds: 120
+    report-list-ttl-seconds: 300
+    risk-history-window-days: 14
+
+  agents:
+    standup:
+      cron: "0 0 8 * * MON-FRI"
+      auto-post-delay-minutes: 30
+    escalation:
+      hold-threshold-days: 5
+      require-hitl: true
+    sla-escalation:
+      enabled: true             # standing SLA-breach sweep; HITL-gated — proposes approval cards, never auto-sends
+      cron: "0 30 * * * *"      # hourly at :30
+      cooldown-days: 3          # don't re-propose the same CR within this window
+      near-margin-pct: 0        # 0 = breached only; >0 also escalates NEAR CRs within this % of target
+
+  capacity:
+    overload-threshold: 85
+    busy-threshold: 70
+    man-day-warning-pct: 80
+
+  uat:
+    cycle-warn-threshold: 3
+
+  client:
+    health-default-green-threshold: 80
+    health-default-amber-threshold: 60
+
+  jira:
+    base-url: ${ORBIT_JIRA_BASE_URL:}
+    email: ${ORBIT_JIRA_EMAIL:}
+    api-token: ${ORBIT_JIRA_API_TOKEN:}
+    webhook-secret: ${ORBIT_JIRA_WEBHOOK_SECRET:dev-secret}
+
+  # Shared prod-bug pool → per-client fan-out (V80). Kill-switch only;
+  # per-project enable/disable lives in `projects.is_shared_prod_bugs`.
+  prod-bug-routing:
+    enabled: ${ORBIT_PROD_BUG_ROUTING_ENABLED:true}
+
+  hrms:
+    # Provider + credentials live in the hrms_config table (Admin →
+    # Integrations → HR System). Only the scheduler knob lives here.
+    sync-cron: "0 0 */4 * * *"
+
+  slack:
+    # Bot token, signing secret, workspace, default channel come from the
+    # admin console (slack_config table, see IntegrationsController).
+    # Only non-secret runtime knobs live here.
+    magic-link-ttl-minutes: 15
+
+  google:
+    client-id: ${GOOGLE_CLIENT_ID:}
+    client-secret: ${GOOGLE_CLIENT_SECRET:}
+    redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:8080/api/v1/auth/google/callback}
+    # Comma-separated hosted domains allowed to auto-provision via SSO (blank = any).
+    allowed-domains: ${GOOGLE_ALLOWED_DOMAINS:}
+    # Least-privilege role for a newly SSO-provisioned user (NOT PM).
+    default-role: ${GOOGLE_SSO_DEFAULT_ROLE:LEADERSHIP}
+    # When false, unknown Google users are rejected instead of auto-created.
+    auto-provision: ${GOOGLE_SSO_AUTO_PROVISION:true}
+
+  frontend:
+    url: ${FRONTEND_URL:http://localhost:3000}
+
+  cookie:
+    # Mark auth cookies Secure — set true in production (HTTPS).
+    secure: ${ORBIT_COOKIE_SECURE:false}
+
+snapshot:
+  renderer: ${SNAPSHOT_RENDERER:mock}                # mock | http
+  sidecar:
+    url: ${SNAPSHOT_SIDECAR_URL:http://localhost:3001}
+    timeout-ms: ${SNAPSHOT_TIMEOUT_MS:20000}
+    # Shared secret sent as X-Snapshot-Secret; must match the sidecar's
+    # SNAPSHOT_SHARED_SECRET. Set in production to authenticate the render call.
+    shared-secret: ${SNAPSHOT_SHARED_SECRET:}
+  storage:
+    root: ${SNAPSHOT_STORAGE_ROOT:./.snapshots}
+  cache-ttl-seconds: ${SNAPSHOT_CACHE_TTL_SECONDS:300}
+  stuck-cutoff-seconds: ${SNAPSHOT_STUCK_CUTOFF_SECONDS:60}
+
+logging:
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %highlight(%-5level) %cyan(%-30logger{30}) : %msg%n"
+  level:
+    com.orbit: DEBUG
+    orbit.http: INFO
+    org.springframework.security: WARN
+    org.springframework.web: WARN
+    org.hibernate.SQL: WARN
+    org.flywaydb: INFO
+    com.zaxxer.hikari: WARN
+    io.netty: WARN

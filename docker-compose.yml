@@ -1,0 +1,97 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: orbit-postgres
+    environment:
+      POSTGRES_DB: orbit
+      POSTGRES_USER: orbit
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-orbit_secret}
+    # Bind to loopback only — never expose the DB on all interfaces (audit H5).
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - orbitdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orbit"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: orbit-redis
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: orbit-backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/orbit
+      SPRING_DATASOURCE_USERNAME: orbit
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-orbit_secret}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      AI_PROVIDER: ${AI_PROVIDER:-anthropic}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # RS256 signing keys (base64). When unset, dev generates an ephemeral pair;
+      # the prod profile requires these (JwtService fails fast otherwise).
+      ORBIT_JWT_PRIVATE_KEY: ${ORBIT_JWT_PRIVATE_KEY:-}
+      ORBIT_JWT_PUBLIC_KEY: ${ORBIT_JWT_PUBLIC_KEY:-}
+      ORBIT_JWT_ACCESS_EXPIRY_MS: ${ORBIT_JWT_ACCESS_EXPIRY_MS:-28800000}
+      # Google SSO (blank = disabled; login page bounces with google_not_configured)
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
+      GOOGLE_ALLOWED_DOMAINS: ${GOOGLE_ALLOWED_DOMAINS:-}
+      SLACK_TOKEN_ENC_KEY: ${SLACK_TOKEN_ENC_KEY:-}
+      INTERNAL_EMAIL_DOMAINS: ${INTERNAL_EMAIL_DOMAINS:-}
+      SNAPSHOT_RENDERER:     ${SNAPSHOT_RENDERER:-http}
+      SNAPSHOT_SIDECAR_URL:  ${SNAPSHOT_SIDECAR_URL:-http://snapshot-sidecar:3001}
+      SNAPSHOT_STORAGE_ROOT: ${SNAPSHOT_STORAGE_ROOT:-/var/snapshots}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - snapshotdata:/var/snapshots
+
+  snapshot-sidecar:
+    build:
+      context: ./services/snapshot-sidecar
+      dockerfile: Dockerfile
+    container_name: orbit-snapshot-sidecar
+    environment:
+      PORT: 3001
+      MAX_CONCURRENT: ${SNAPSHOT_MAX_CONCURRENT:-2}
+      DEFAULT_TIMEOUT_MS: ${SNAPSHOT_TIMEOUT_MS:-20000}
+    # Internal-only service — bind to loopback (audit H4/H5).
+    ports:
+      - "127.0.0.1:3001:3001"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: orbit-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  orbitdata:
+  snapshotdata:

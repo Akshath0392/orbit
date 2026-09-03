@@ -1,0 +1,9 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Known test fixtures that are not real secrets"
+paths = [
+  # Uses the example signing secret from Slack's public signature-verification docs
+  '''backend/src/test/java/com/orbit/integration/slack/SlackSignatureVerifierTest\.java''',
+]

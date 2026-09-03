@@ -1,0 +1,4 @@
+ALTER TABLE alerts ADD COLUMN IF NOT EXISTS phase        VARCHAR(20);
+ALTER TABLE alerts ADD COLUMN IF NOT EXISTS days_overdue INT;
+
+CREATE INDEX IF NOT EXISTS idx_al_phase ON alerts(phase);

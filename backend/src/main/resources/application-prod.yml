@@ -1,0 +1,24 @@
+# Production profile. Activate with SPRING_PROFILES_ACTIVE=prod.
+#
+# The ${VAR:?message} form makes the app fail fast at startup when a required
+# secret is missing, instead of silently falling back to a dev default (audit H5).
+# RS256 key material (ORBIT_JWT_PRIVATE_KEY / ORBIT_JWT_PUBLIC_KEY) and the Slack
+# encryption key are validated in code (JwtService / SlackEncryptionService).
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:?set SPRING_DATASOURCE_URL for prod}
+    username: ${SPRING_DATASOURCE_USERNAME:?set SPRING_DATASOURCE_USERNAME for prod}
+    password: ${SPRING_DATASOURCE_PASSWORD:?set SPRING_DATASOURCE_PASSWORD for prod}
+
+orbit:
+  cookie:
+    secure: true                              # auth cookies over HTTPS only
+  # ORBIT_ADMIN_PASSWORD left unset -> a random bootstrap password is generated
+  # and logged once at first boot; pin it via the env var to choose your own.
+  google:
+    # Strongly recommended in prod: restrict SSO auto-provisioning to your domain(s).
+    allowed-domains: ${GOOGLE_ALLOWED_DOMAINS:}
+
+snapshot:
+  sidecar:
+    shared-secret: ${SNAPSHOT_SHARED_SECRET:?set SNAPSHOT_SHARED_SECRET for prod}

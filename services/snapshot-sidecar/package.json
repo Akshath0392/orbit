@@ -1,0 +1,19 @@
+{
+  "name": "orbit-snapshot-sidecar",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Playwright-backed render service for Orbit snapshots",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "postinstall": "playwright install chromium"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "playwright": "^1.47.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

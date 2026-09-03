@@ -1,0 +1,171 @@
+# Slack-status-query eval set — Phase 1.7.
+# Replayed by SlackEvalRunnerIT against IntentResolver. Mix of deterministic
+# slash-keyword cases and natural-language cases that exercise the LLM fallback
+# (stubbed via RecordedAiGateway, so CI doesn't hit the API).
+#
+# Schema per case:
+#   name           — unique kebab-case id
+#   utterance      — raw text the user typed
+#   expectedTool   — tool the resolver MUST emit; null means "expect Optional.empty()"
+#   expectedArgs   — keys the resolver's args map MUST contain (subset match)
+#   stubbedLlmJson — if present, RecordedAiGateway will return this when the LLM
+#                    path is taken; absent for deterministic cases.
+#   note           — free-text rationale (for humans)
+
+- name: alerts-critical-keyword
+  utterance: "alerts critical"
+  expectedTool: orbit.get_alerts
+  expectedArgs: { severity: critical }
+  note: Deterministic slash keyword + severity arg.
+
+- name: alerts-keyword-no-arg
+  utterance: "alerts"
+  expectedTool: orbit.get_alerts
+  expectedArgs: {}
+  note: Deterministic without severity falls back to all-severities filter.
+
+- name: alerts-warning-keyword
+  utterance: "alerts warning"
+  expectedTool: orbit.get_alerts
+  expectedArgs: { severity: warning }
+
+- name: bugs-p0-keyword
+  utterance: "bugs p0"
+  expectedTool: orbit.get_bugs
+  expectedArgs: { severity: P0 }
+
+- name: bugs-p1-uppercase-normalised
+  utterance: "bugs P1"
+  expectedTool: orbit.get_bugs
+  expectedArgs: { severity: P1 }
+
+- name: crs-keyword
+  utterance: "crs"
+  expectedTool: orbit.get_crs
+  expectedArgs: {}
+
+- name: cr-singular-keyword
+  utterance: "cr"
+  expectedTool: orbit.get_crs
+  expectedArgs: {}
+
+- name: briefing-keyword
+  utterance: "briefing"
+  expectedTool: orbit.get_briefing
+  expectedArgs: {}
+
+- name: forecast-with-project
+  utterance: "forecast apollo"
+  expectedTool: orbit.get_forecast
+  expectedArgs: { projectName: Apollo }
+
+- name: capacity-keyword
+  utterance: "capacity"
+  expectedTool: orbit.get_capacity
+  expectedArgs: {}
+
+- name: report-keyword
+  utterance: "report"
+  expectedTool: orbit.get_report_status
+  expectedArgs: {}
+
+- name: nl-urgent-routes-to-alerts
+  utterance: "anything urgent I should look at?"
+  expectedTool: orbit.get_alerts
+  expectedArgs: { severity: critical }
+  stubbedLlmJson: '{"tool":"orbit.get_alerts","args":{"severity":"critical"},"reasoning":"urgent → critical alerts"}'
+
+- name: nl-what-is-burning
+  utterance: "what's on fire today"
+  expectedTool: orbit.get_alerts
+  expectedArgs: {}
+  stubbedLlmJson: '{"tool":"orbit.get_alerts","args":{},"reasoning":"colloquial for active alerts"}'
+
+- name: nl-any-p0-bugs
+  utterance: "any open p0 bugs?"
+  expectedTool: orbit.get_bugs
+  expectedArgs: { severity: P0 }
+  stubbedLlmJson: '{"tool":"orbit.get_bugs","args":{"severity":"P0"},"reasoning":"asks about P0 bugs"}'
+
+- name: nl-daily-summary
+  utterance: "what's happening today"
+  expectedTool: orbit.get_briefing
+  expectedArgs: {}
+  stubbedLlmJson: '{"tool":"orbit.get_briefing","args":{},"reasoning":"daily summary"}'
+
+- name: nl-burn-projection
+  utterance: "how is the burn looking for borealis"
+  expectedTool: orbit.get_forecast
+  expectedArgs: { projectName: Borealis }
+  stubbedLlmJson: '{"tool":"orbit.get_forecast","args":{"projectName":"Borealis"},"reasoning":"burn → forecast"}'
+
+- name: nl-team-load
+  utterance: "who's overloaded"
+  expectedTool: orbit.get_capacity
+  expectedArgs: {}
+  stubbedLlmJson: '{"tool":"orbit.get_capacity","args":{},"reasoning":"team utilisation"}'
+
+- name: nl-where-is-my-report
+  utterance: "is my weekly report ready"
+  expectedTool: orbit.get_report_status
+  expectedArgs: {}
+  stubbedLlmJson: '{"tool":"orbit.get_report_status","args":{"type":"weekly"},"reasoning":"asks about report"}'
+
+- name: nl-out-of-scope-rejected
+  utterance: "tell me a joke about jira"
+  expectedTool: null
+  stubbedLlmJson: '{"tool":null,"args":{},"reasoning":"out of scope"}'
+
+- name: nl-write-tool-blocked
+  utterance: "post a message to the team that we are on fire"
+  expectedTool: null
+  stubbedLlmJson: '{"tool":"orbit.send_message","args":{"channel":"#team"},"reasoning":"asks to send"}'
+  note: LLM attempts a write tool — allowlist drops it.
+
+# ── Phase 2: invocation tools ────────────────────────────────────────────────
+
+- name: run-report-keyword
+  utterance: "run report"
+  expectedTool: orbit.run_report
+  expectedArgs: {}
+  note: Deterministic invocation keyword.
+
+- name: generate-report-keyword
+  utterance: "generate report"
+  expectedTool: orbit.run_report
+  expectedArgs: {}
+
+- name: kick-off-briefing-keyword
+  utterance: "kick off briefing"
+  expectedTool: orbit.run_briefing
+  expectedArgs: {}
+
+- name: run-forecast-with-project
+  utterance: "run forecast borealis"
+  expectedTool: orbit.run_forecast
+  expectedArgs: { projectName: Borealis }
+
+- name: nl-generate-weekly-report
+  utterance: "please generate the weekly report for apollo"
+  expectedTool: orbit.run_report
+  expectedArgs: { type: weekly, projectName: Apollo }
+  stubbedLlmJson: '{"tool":"orbit.run_report","args":{"type":"weekly","projectName":"Apollo"},"reasoning":"explicit generate request"}'
+
+- name: nl-produce-forecast
+  utterance: "produce a fresh forecast for borealis"
+  expectedTool: orbit.run_forecast
+  expectedArgs: { projectName: Borealis }
+  stubbedLlmJson: '{"tool":"orbit.run_forecast","args":{"projectName":"Borealis"},"reasoning":"fresh → run"}'
+
+- name: nl-kick-off-briefing
+  utterance: "kick off today's delivery briefing"
+  expectedTool: orbit.run_briefing
+  expectedArgs: {}
+  stubbedLlmJson: '{"tool":"orbit.run_briefing","args":{},"reasoning":"kick off"}'
+
+- name: nl-existing-report-uses-get
+  utterance: "is the apollo report ready yet"
+  expectedTool: orbit.get_report_status
+  expectedArgs: {}
+  stubbedLlmJson: '{"tool":"orbit.get_report_status","args":{"projectName":"Apollo"},"reasoning":"asks about existing report"}'
+  note: Differentiates run_* vs get_* — checking status is read.
